@@ -1,4 +1,4 @@
-const BASE_URL = "https://clearbid-backend-1.onrender.com";
+const BASE_URL = "https://tendervault-sbap.onrender.com";
 
 export const createTender = async (tenderData) => {
   const response = await fetch(`${BASE_URL}/api/tender`, {
