@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, Minus, Lock, AlertTriangle, CheckCircle, ExternalLink, Copy, Loader2, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { createTender } from "@/services/api";
+import { useAuth } from "@/context/AuthContext";
 
 interface Criterion {
   id: string;
@@ -26,6 +27,7 @@ interface SuccessModal {
 }
 
 export default function CreateTender() {
+  const { currentUser } = useAuth();
   const [criteria, setCriteria] = useState<Criterion[]>(defaultCriteria);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<SuccessModal | null>(null);
@@ -76,7 +78,9 @@ export default function CreateTender() {
         deadline: form.deadline,
         organization: form.organization,
         orgType: form.orgType,
-        budget: parseFloat(form.budget)
+        budget: parseFloat(form.budget),
+        user_id: currentUser?.uid,
+        email: form.email
       });
       
       setSuccess({

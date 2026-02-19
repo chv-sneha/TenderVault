@@ -1,30 +1,9 @@
-import { useState } from "react";
-import { ExternalLink, Copy, Wallet, FileText, Gavel, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ExternalLink, Copy, Wallet, FileText, Gavel, TrendingUp, Loader2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-
-const myTenders = [
-  { id: "TND-A1B2C3", title: "Hospital Wing B Construction", status: "AWARDED", bids: 5 },
-  { id: "TND-D4E5F6", title: "Campus Network Upgrade", status: "OPEN", bids: 14 },
-];
-
-const myBids = [
-  { id: "TND-J1K2L3", title: "Enterprise Software Licensing", status: "WON", company: "Nexgen Corp" },
-  { id: "TND-G7H8I9", title: "Medical Equipment Procurement", status: "LOST", company: "City Hospital" },
-  { id: "TND-M4N5O6", title: "Road Infrastructure Phase 3", status: "PENDING", company: "Transport Authority" },
-];
-
-const stakes = [
-  { tenderId: "TND-J1K2L3", amount: "0.1", status: "RETURNED", txId: "ABC123...XYZ" },
-  { tenderId: "TND-G7H8I9", amount: "0.1", status: "RETURNED", txId: "DEF456...UVW" },
-  { tenderId: "TND-M4N5O6", amount: "0.1", status: "LOCKED", txId: "GHI789...RST" },
-];
-
-const txHistory = [
-  { type: "Bid Submitted", tenderId: "TND-M4N5O6", txId: "GHI789...RST", date: "2026-02-10" },
-  { type: "Stake Returned", tenderId: "TND-G7H8I9", txId: "DEF456...UVW", date: "2026-01-30" },
-  { type: "Bid Submitted", tenderId: "TND-G7H8I9", txId: "JKL012...MNO", date: "2026-01-15" },
-  { type: "Tender Created", tenderId: "TND-D4E5F6", txId: "PQR345...STU", date: "2026-01-10" },
-];
+import { useAuth } from "@/context/AuthContext";
+import { getUserTenders, getUserBids } from "@/services/api";
+import { Link } from "react-router-dom";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -41,8 +20,36 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function Profile() {
+  const { currentUser, accountType } = useAuth();
   const [tab, setTab] = useState<"tenders" | "bids">("tenders");
-  const walletAddress = "ALGO7X3KMNP2ALGO7X3KMNP2ALGO7X3K";
+  const [myTenders, setMyTenders] = useState<any[]>([]);
+  const [myBids, setMyBids] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (currentUser) {
+      loadUserData();
+    }
+  }, [currentUser]);
+
+  const loadUserData = async () => {
+    setLoading(true);
+    try {
+      const [tendersData, bidsData] = await Promise.all([
+        getUserTenders(currentUser!.uid),
+        getUserBids(currentUser!.uid)
+      ]);
+      console.log('Tenders:', tendersData);
+      console.log('Bids:', bidsData);
+      setMyTenders(tendersData.tenders || []);
+      setMyBids(bidsData.bids || []);
+    } catch (error) {
+      console.error('Profile load error:', error);
+      toast({ title: "Error", description: "Failed to load profile data", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const copy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -59,23 +66,23 @@ export default function Profile() {
               <Wallet className="w-8 h-8 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm text-muted-foreground mb-1">Connected Wallet</div>
+              <div className="text-sm text-muted-foreground mb-1">Logged in as</div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                <div className="font-mono text-primary font-semibold truncate">{walletAddress}</div>
-                <button onClick={() => copy(walletAddress)} className="p-1.5 rounded-lg hover:bg-secondary transition-all text-muted-foreground hover:text-foreground flex-shrink-0">
+                <div className="font-semibold text-primary truncate">{currentUser?.email}</div>
+                <button onClick={() => copy(currentUser?.email || "")} className="p-1.5 rounded-lg hover:bg-secondary transition-all text-muted-foreground hover:text-foreground flex-shrink-0">
                   <Copy className="w-3.5 h-3.5" />
                 </button>
               </div>
-              <div className="text-xs text-muted-foreground mt-1">Algorand Testnet</div>
+              <div className="text-xs text-muted-foreground mt-1 capitalize">{accountType} Account</div>
             </div>
           </div>
 
           <div className="mt-6 grid grid-cols-3 gap-4">
             {[
-              { label: "Tenders Posted", value: "2", icon: FileText },
-              { label: "Bids Submitted", value: "3", icon: Gavel },
-              { label: "Bids Won", value: "1", icon: TrendingUp },
+              { label: "Tenders Posted", value: myTenders.length.toString(), icon: FileText },
+              { label: "Bids Submitted", value: myBids.length.toString(), icon: Gavel },
+              { label: "Bids Won", value: myBids.filter(b => b.score && b.score >= 80).length.toString(), icon: TrendingUp },
             ].map((stat) => {
               const Icon = stat.icon;
               return (
@@ -105,107 +112,58 @@ export default function Profile() {
         </div>
 
         {/* Tab Content */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <>
         {tab === "tenders" && (
           <div className="space-y-4 mb-8">
-            {myTenders.map((t) => (
-              <div key={t.id} className="glass-card rounded-xl p-5 flex items-center gap-4">
-                <div className="flex-1">
-                  <div className="text-xs font-mono text-muted-foreground mb-1">{t.id}</div>
-                  <div className="font-semibold">{t.title}</div>
-                  <div className="text-sm text-muted-foreground mt-0.5">{t.bids} bids received</div>
-                </div>
-                <StatusBadge status={t.status} />
+            {myTenders.length === 0 ? (
+              <div className="glass-card rounded-xl p-8 text-center text-muted-foreground">
+                No tenders posted yet. <Link to="/create-tender" className="text-primary hover:underline">Create your first tender</Link>
               </div>
-            ))}
+            ) : (
+              myTenders.map((t) => (
+                <Link key={t.tender_id} to={`/tenders/${t.tender_id}`} className="glass-card rounded-xl p-5 flex items-center gap-4 hover:bg-secondary/50 transition-all">
+                  <div className="flex-1">
+                    <div className="text-xs font-mono text-muted-foreground mb-1">{t.tender_id}</div>
+                    <div className="font-semibold">{t.title}</div>
+                    <div className="text-sm text-muted-foreground mt-0.5">{t.bid_count || 0} bids received</div>
+                  </div>
+                  <StatusBadge status={t.status} />
+                </Link>
+              ))
+            )}
           </div>
         )}
 
         {tab === "bids" && (
           <div className="space-y-4 mb-8">
-            {myBids.map((b) => (
-              <div key={b.id} className="glass-card rounded-xl p-5 flex items-center gap-4">
-                <div className="flex-1">
-                  <div className="text-xs font-mono text-muted-foreground mb-1">{b.id}</div>
-                  <div className="font-semibold">{b.title}</div>
-                  <div className="text-sm text-muted-foreground mt-0.5">{b.company}</div>
-                </div>
-                <StatusBadge status={b.status} />
+            {myBids.length === 0 ? (
+              <div className="glass-card rounded-xl p-8 text-center text-muted-foreground">
+                No bids submitted yet. <Link to="/tenders" className="text-primary hover:underline">Browse available tenders</Link>
               </div>
-            ))}
+            ) : (
+              myBids.map((b) => (
+                <Link key={b.bid_id} to={`/tenders/${b.tender_id}`} className="glass-card rounded-xl p-5 hover:bg-secondary/50 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <div className="text-xs font-mono text-muted-foreground mb-1">{b.tender_id}</div>
+                      <div className="font-semibold">{b.tender_title || "Tender"}</div>
+                      <div className="text-sm text-muted-foreground mt-0.5">Bid: {b.price} ALGO</div>
+                      {b.score && <div className="text-sm text-primary mt-1">Score: {b.score}/100</div>}
+                    </div>
+                    <StatusBadge status={b.score ? (b.score >= 80 ? "WON" : "LOST") : "PENDING"} />
+                  </div>
+                </Link>
+              ))
+            )}
           </div>
         )}
-
-        {/* Stake History */}
-        <div className="glass-card rounded-2xl p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">Stake History</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left pb-3 text-muted-foreground font-medium">Tender ID</th>
-                  <th className="text-left pb-3 text-muted-foreground font-medium">Amount</th>
-                  <th className="text-left pb-3 text-muted-foreground font-medium">Status</th>
-                  <th className="text-left pb-3 text-muted-foreground font-medium">Tx ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stakes.map((s) => (
-                  <tr key={s.tenderId} className="border-b border-border/50">
-                    <td className="py-3 font-mono text-xs text-muted-foreground">{s.tenderId}</td>
-                    <td className="py-3 font-semibold text-primary font-mono">{s.amount} ALGO</td>
-                    <td className="py-3"><StatusBadge status={s.status} /></td>
-                    <td className="py-3">
-                      <a
-                        href={`https://testnet.algoexplorer.io/tx/${s.txId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-mono text-xs text-primary hover:underline flex items-center gap-1"
-                      >
-                        {s.txId} <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Transaction History */}
-        <div className="glass-card rounded-2xl p-6">
-          <h2 className="text-xl font-bold mb-4">Transaction History</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left pb-3 text-muted-foreground font-medium">Type</th>
-                  <th className="text-left pb-3 text-muted-foreground font-medium">Tender</th>
-                  <th className="text-left pb-3 text-muted-foreground font-medium">Date</th>
-                  <th className="text-left pb-3 text-muted-foreground font-medium">Tx ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {txHistory.map((tx, i) => (
-                  <tr key={i} className="border-b border-border/50">
-                    <td className="py-3 font-medium">{tx.type}</td>
-                    <td className="py-3 font-mono text-xs text-muted-foreground">{tx.tenderId}</td>
-                    <td className="py-3 text-muted-foreground">{tx.date}</td>
-                    <td className="py-3">
-                      <a
-                        href={`https://testnet.algoexplorer.io/tx/${tx.txId}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-mono text-xs text-primary hover:underline flex items-center gap-1"
-                      >
-                        {tx.txId} <ExternalLink className="w-3 h-3" />
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        </>
+        )}
       </div>
     </div>
   );

@@ -64,12 +64,15 @@ class TenderCreate(BaseModel):
     organization: Optional[str] = None
     orgType: Optional[str] = "Government"
     budget: Optional[float] = 0
+    user_id: Optional[str] = None
+    email: Optional[str] = None
 
 class BidSubmit(BaseModel):
     tender_id: str
     vendor_name: str
     proposal: str
     price: float
+    user_id: Optional[str] = None
 
 @app.post("/api/tender")
 async def create_tender(tender: TenderCreate):
@@ -89,7 +92,9 @@ async def create_tender(tender: TenderCreate):
             "criteria_hash": criteria_hash,
             "created_at": datetime.now().isoformat(),
             "status": "OPEN",
-            "bid_count": 0
+            "bid_count": 0,
+            "user_id": tender.user_id,
+            "email": tender.email
         }
         
         # Store in Firebase or memory
@@ -130,7 +135,8 @@ async def submit_bid(bid: BidSubmit):
         "proposal": bid.proposal,
         "price": bid.price,
         "bid_hash": bid_hash,
-        "submitted_at": datetime.now().isoformat()
+        "submitted_at": datetime.now().isoformat(),
+        "user_id": bid.user_id
     }
     
     # Store in Firebase or memory
@@ -270,6 +276,70 @@ async def get_results(tender_id: str):
 @app.get("/")
 async def root():
     return {"message": "ClearBid API", "app_id": APP_ID}
+
+@app.get("/api/user/{user_id}/tenders")
+async def get_user_tenders(user_id: str):
+    print(f"\n=== Getting tenders for user: {user_id} ===")
+    if USE_FIREBASE:
+        try:
+            user_doc = db.collection("users").document(user_id).get()
+            user_email = user_doc.to_dict().get('email') if user_doc.exists else None
+            print(f"User email: {user_email}")
+        except Exception as e:
+            print(f"Error getting user: {e}")
+            user_email = None
+        
+        tenders_ref = db.collection("tenders").stream()
+        all_tenders = []
+        for tender_doc in tenders_ref:
+            tender_data = tender_doc.to_dict()
+            if 'tender_id' not in tender_data:
+                tender_data['tender_id'] = tender_doc.id
+            all_tenders.append(tender_data)
+        
+        print(f"Total tenders in DB: {len(all_tenders)}")
+        if all_tenders:
+            print(f"Sample tender fields: {list(all_tenders[0].keys())}")
+        
+        # Return ALL tenders for now (old data doesn't have user_id)
+        return {"tenders": all_tenders}
+    else:
+        tenders = list(tenders_db.values())
+        return {"tenders": tenders}
+
+@app.get("/api/user/{user_id}/bids")
+async def get_user_bids(user_id: str):
+    print(f"\n=== Getting bids for user: {user_id} ===")
+    if USE_FIREBASE:
+        try:
+            user_doc = db.collection("users").document(user_id).get()
+            user_email = user_doc.to_dict().get('email') if user_doc.exists else None
+            print(f"User email: {user_email}")
+        except Exception as e:
+            print(f"Error getting user: {e}")
+            user_email = None
+        
+        bids_ref = db.collection("bids").stream()
+        all_bids = []
+        for bid_doc in bids_ref:
+            bid_data = bid_doc.to_dict()
+            if 'tender_id' in bid_data:
+                tender_doc = db.collection("tenders").document(bid_data['tender_id']).get()
+                if tender_doc.exists:
+                    tender_data = tender_doc.to_dict()
+                    bid_data['tender_title'] = tender_data.get('title', 'Unknown')
+                    bid_data['tender_status'] = tender_data.get('status', 'UNKNOWN')
+            all_bids.append(bid_data)
+        
+        print(f"Total bids in DB: {len(all_bids)}")
+        if all_bids:
+            print(f"Sample bid fields: {list(all_bids[0].keys())}")
+        
+        # Return ALL bids for now (old data doesn't have user_id)
+        return {"bids": all_bids}
+    else:
+        bids = list(bids_db.values())
+        return {"bids": bids}
 
 @app.get("/api/health")
 async def health():

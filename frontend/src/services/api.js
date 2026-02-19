@@ -79,3 +79,21 @@ export const evaluateTender = async (tenderId) => {
     handleError(error, 'Evaluate Tender');
   }
 };
+
+export const getUserTenders = async (userId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/user/${userId}/tenders`);
+    return await handleResponse(response);
+  } catch (error) {
+    handleError(error, 'Get User Tenders');
+  }
+};
+
+export const getUserBids = async (userId) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/user/${userId}/bids`);
+    return await handleResponse(response);
+  } catch (error) {
+    handleError(error, 'Get User Bids');
+  }
+};

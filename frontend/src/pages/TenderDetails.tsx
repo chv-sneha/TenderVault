@@ -35,7 +35,7 @@ interface BidSuccess {
 
 export default function TenderDetails() {
   const { id } = useParams();
-  const { accountType } = useAuth();
+  const { accountType, currentUser } = useAuth();
   const [tender, setTender] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [bidLoading, setBidLoading] = useState(false);
@@ -91,7 +91,8 @@ export default function TenderDetails() {
         tender_id: tender.id,
         vendor_name: form.company,
         proposal: form.proposal || "Standard proposal",
-        price: parseFloat(form.price)
+        price: parseFloat(form.price),
+        user_id: currentUser?.uid
       });
       
       setBidSuccess({ 
@@ -242,7 +243,7 @@ export default function TenderDetails() {
         </div>
 
         {/* Bid Form */}
-        {tender.status === "OPEN" && !bidSuccess && (
+        {tender.status === "OPEN" && !bidSuccess && accountType !== "government" && (
           <form onSubmit={handleBid} className="glass-card rounded-2xl p-8 space-y-6">
             <h2 className="text-2xl font-bold">Submit Your Bid</h2>
 
