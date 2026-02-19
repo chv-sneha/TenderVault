@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Search, Filter, Clock, Users, ChevronRight, ArrowUpDown } from "lucide-react";
+import { Search, Filter, Clock, Users, ChevronRight, ArrowUpDown, Loader2 } from "lucide-react";
+import { getTenders } from "@/services/api";
 
 const mockTenders = [
   {
@@ -91,15 +92,45 @@ export default function BrowseTenders() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [orgFilter, setOrgFilter] = useState("ALL");
-  const [tenders, setTenders] = useState(mockTenders);
+  const [allTenders, setAllTenders] = useState([]);
+  const [tenders, setTenders] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let filtered = mockTenders;
+    loadTenders();
+  }, []);
+
+  const loadTenders = async () => {
+    try {
+      const response = await getTenders();
+      const tendersData = response.tenders.map(t => ({
+        id: t.tender_id,
+        title: t.title,
+        organization: t.organization || "Unknown",
+        orgType: t.orgType || "Government",
+        budget: t.budget || 0,
+        deadline: new Date(t.deadline),
+        bids: t.bid_count || 0,
+        status: t.status || "OPEN"
+      }));
+      setAllTenders(tendersData);
+      setTenders(tendersData);
+    } catch (error) {
+      console.error("Failed to load tenders:", error);
+      setAllTenders(mockTenders);
+      setTenders(mockTenders);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let filtered = allTenders;
     if (search) filtered = filtered.filter((t) => t.title.toLowerCase().includes(search.toLowerCase()) || t.organization.toLowerCase().includes(search.toLowerCase()));
     if (statusFilter !== "ALL") filtered = filtered.filter((t) => t.status === statusFilter);
     if (orgFilter !== "ALL") filtered = filtered.filter((t) => t.orgType === orgFilter);
     setTenders(filtered);
-  }, [search, statusFilter, orgFilter]);
+  }, [search, statusFilter, orgFilter, allTenders]);
 
   return (
     <div className="min-h-screen pt-24 pb-16">
@@ -149,7 +180,15 @@ export default function BrowseTenders() {
           Showing <span className="text-foreground font-medium">{tenders.length}</span> tenders
         </div>
 
+        {/* Loading */}
+        {loading && (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        )}
+
         {/* Tender Cards */}
+        {!loading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {tenders.map((tender) => (
             <div key={tender.id} className="glass-card rounded-2xl p-6 flex flex-col gap-4 hover:scale-[1.02] transition-all duration-200 border border-border hover:border-primary/30 group animated-border">
@@ -200,6 +239,7 @@ export default function BrowseTenders() {
             </div>
           ))}
         </div>
+        )}
 
         {tenders.length === 0 && (
           <div className="text-center py-20">

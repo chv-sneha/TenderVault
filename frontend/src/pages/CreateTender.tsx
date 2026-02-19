@@ -73,7 +73,10 @@ export default function CreateTender() {
         title: form.title,
         description: form.description,
         criteria: criteriaObj,
-        deadline: form.deadline
+        deadline: form.deadline,
+        organization: form.organization,
+        orgType: form.orgType,
+        budget: parseFloat(form.budget)
       });
       
       setSuccess({
