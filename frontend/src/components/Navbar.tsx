@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Wallet, User, Menu, X, ChevronDown, Zap } from "lucide-react";
+import { Wallet, User, Menu, X, LogOut, Zap } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const navLinks = [
   { label: "Home", path: "/" },
@@ -13,6 +14,7 @@ const navLinks = [
 ];
 
 export default function Navbar() {
+  const { currentUser, accountType, logout } = useAuth();
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -79,26 +81,43 @@ export default function Navbar() {
 
             {/* Right Actions */}
             <div className="hidden md:flex items-center gap-3">
-              {walletConnected ? (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  <span className="text-sm font-mono text-primary">{walletAddress}</span>
-                </div>
+              {currentUser ? (
+                <>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <span className="text-xs font-semibold text-primary uppercase">
+                      {accountType === "government" ? "Organization" : "Vendor"}
+                    </span>
+                  </div>
+                  <Link
+                    to="/profile"
+                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200"
+                  >
+                    <User className="w-5 h-5" />
+                  </Link>
+                  <button
+                    onClick={logout}
+                    className="p-2 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </button>
+                </>
               ) : (
-                <button
-                  onClick={connectWallet}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all duration-200 shadow-glow-sm"
-                >
-                  <Wallet className="w-4 h-4" />
-                  Connect Wallet
-                </button>
+                <>
+                  <Link
+                    to="/login"
+                    className="px-4 py-2 rounded-lg text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all shadow-glow-sm"
+                  >
+                    Register
+                  </Link>
+                </>
               )}
-              <Link
-                to="/profile"
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all duration-200"
-              >
-                <User className="w-5 h-5" />
-              </Link>
             </div>
 
             {/* Mobile Hamburger */}
@@ -156,27 +175,45 @@ export default function Navbar() {
               );
             })}
             <div className="mt-4 pt-4 border-t border-border">
-              {walletConnected ? (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  <span className="text-sm font-mono text-primary">{walletAddress}</span>
-                </div>
+              {currentUser ? (
+                <>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/20 mb-2">
+                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    <span className="text-xs font-semibold text-primary uppercase">
+                      {accountType === "government" ? "Organization" : "Vendor"}
+                    </span>
+                  </div>
+                  <Link
+                    to="/profile"
+                    className="w-full flex items-center gap-2 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all text-sm"
+                  >
+                    <User className="w-4 h-4" />
+                    Profile
+                  </Link>
+                  <button
+                    onClick={logout}
+                    className="mt-2 w-full flex items-center gap-2 px-4 py-3 rounded-lg text-destructive hover:bg-destructive/10 transition-all text-sm"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                  </button>
+                </>
               ) : (
-                <button
-                  onClick={connectWallet}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all shadow-glow-sm"
-                >
-                  <Wallet className="w-4 h-4" />
-                  Connect Wallet
-                </button>
+                <>
+                  <Link
+                    to="/login"
+                    className="w-full flex items-center justify-center px-4 py-3 rounded-lg text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+                  >
+                    Login
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="mt-2 w-full flex items-center justify-center px-4 py-3 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-all shadow-glow-sm"
+                  >
+                    Register
+                  </Link>
+                </>
               )}
-              <Link
-                to="/profile"
-                className="mt-2 w-full flex items-center gap-2 px-4 py-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-all text-sm"
-              >
-                <User className="w-4 h-4" />
-                Profile
-              </Link>
             </div>
           </div>
         </div>
