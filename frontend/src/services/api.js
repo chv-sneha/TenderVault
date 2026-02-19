@@ -1,47 +1,81 @@
 const BASE_URL = "https://tendervault-sbap.onrender.com";
 
-export const createTender = async (tenderData) => {
-  const response = await fetch(`${BASE_URL}/api/tender`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(tenderData)
-  });
-  if (!response.ok) throw new Error('Failed to create tender');
+const handleResponse = async (response) => {
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Request failed' }));
+    throw new Error(error.message || `HTTP ${response.status}: ${response.statusText}`);
+  }
   return response.json();
+};
+
+const handleError = (error, context) => {
+  console.error(`${context}:`, error);
+  if (error.message.includes('Failed to fetch')) {
+    throw new Error('Network error. Please check your connection.');
+  }
+  throw error;
+};
+
+export const createTender = async (tenderData) => {
+  try {
+    const response = await fetch(`${BASE_URL}/api/tender`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tenderData)
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    handleError(error, 'Create Tender');
+  }
 };
 
 export const submitBid = async (bidData) => {
-  const response = await fetch(`${BASE_URL}/api/bid`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(bidData)
-  });
-  if (!response.ok) throw new Error('Failed to submit bid');
-  return response.json();
+  try {
+    const response = await fetch(`${BASE_URL}/api/bid`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bidData)
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    handleError(error, 'Submit Bid');
+  }
 };
 
 export const getTenders = async () => {
-  const response = await fetch(`${BASE_URL}/api/tenders`);
-  if (!response.ok) throw new Error('Failed to fetch tenders');
-  return response.json();
+  try {
+    const response = await fetch(`${BASE_URL}/api/tenders`);
+    return await handleResponse(response);
+  } catch (error) {
+    handleError(error, 'Get Tenders');
+  }
 };
 
 export const getTender = async (tenderId) => {
-  const response = await fetch(`${BASE_URL}/api/tender/${tenderId}`);
-  if (!response.ok) throw new Error('Failed to fetch tender');
-  return response.json();
+  try {
+    const response = await fetch(`${BASE_URL}/api/tender/${tenderId}`);
+    return await handleResponse(response);
+  } catch (error) {
+    handleError(error, 'Get Tender');
+  }
 };
 
 export const getResults = async (tenderId) => {
-  const response = await fetch(`${BASE_URL}/api/results/${tenderId}`);
-  if (!response.ok) throw new Error('Failed to fetch results');
-  return response.json();
+  try {
+    const response = await fetch(`${BASE_URL}/api/results/${tenderId}`);
+    return await handleResponse(response);
+  } catch (error) {
+    handleError(error, 'Get Results');
+  }
 };
 
 export const evaluateTender = async (tenderId) => {
-  const response = await fetch(`${BASE_URL}/api/evaluate/${tenderId}`, {
-    method: 'POST'
-  });
-  if (!response.ok) throw new Error('Failed to evaluate tender');
-  return response.json();
+  try {
+    const response = await fetch(`${BASE_URL}/api/evaluate/${tenderId}`, {
+      method: 'POST'
+    });
+    return await handleResponse(response);
+  } catch (error) {
+    handleError(error, 'Evaluate Tender');
+  }
 };

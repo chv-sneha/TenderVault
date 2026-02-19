@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Zap, ExternalLink, Github, Twitter } from "lucide-react";
+import { Zap, ExternalLink, Github, Twitter, Linkedin, Mail } from "lucide-react";
 
 export default function Footer() {
   return (
@@ -26,6 +26,43 @@ export default function Footer() {
               <span className="text-xs text-muted-foreground font-mono">
                 Connected to Algorand Testnet
               </span>
+            </div>
+            {/* Social Links */}
+            <div className="mt-6 flex items-center gap-3">
+              <a
+                href="https://github.com/yourusername/TenderVault"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-muted hover:bg-primary/20 transition-colors group"
+                aria-label="GitHub"
+              >
+                <Github className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              </a>
+              <a
+                href="https://twitter.com/tendervault"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-muted hover:bg-primary/20 transition-colors group"
+                aria-label="Twitter"
+              >
+                <Twitter className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              </a>
+              <a
+                href="https://linkedin.com/company/tendervault"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-muted hover:bg-primary/20 transition-colors group"
+                aria-label="LinkedIn"
+              >
+                <Linkedin className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              </a>
+              <a
+                href="mailto:contact@tendervault.com"
+                className="w-9 h-9 flex items-center justify-center rounded-lg bg-muted hover:bg-primary/20 transition-colors group"
+                aria-label="Email"
+              >
+                <Mail className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              </a>
             </div>
           </div>
 

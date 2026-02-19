@@ -198,6 +198,30 @@
     @apply w-full rounded-lg border border-border bg-muted/50 px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all duration-200;
   }
 
+  /* Mobile responsive utilities */
+  @media (max-width: 640px) {
+    .glass-card {
+      padding: 1rem;
+    }
+    .form-input {
+      font-size: 16px; /* Prevents zoom on iOS */
+    }
+    h1 {
+      font-size: 2rem;
+    }
+    h2 {
+      font-size: 1.5rem;
+    }
+  }
+
+  /* Touch-friendly buttons on mobile */
+  @media (max-width: 768px) {
+    button, a[role="button"] {
+      min-height: 44px; /* iOS recommended touch target */
+      min-width: 44px;
+    }
+  }
+
   /* Scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
