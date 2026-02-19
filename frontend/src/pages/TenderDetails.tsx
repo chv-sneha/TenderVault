@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Lock, Users, Clock, ExternalLink, CheckCircle, Copy, Loader2, AlertCircle, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { submitBid } from "@/services/api";
+import { submitBid, getTender } from "@/services/api";
 
 const mockTender = {
   id: "TND-A1B2C3",
@@ -34,8 +34,9 @@ interface BidSuccess {
 
 export default function TenderDetails() {
   const { id } = useParams();
-  const tender = mockTender; // In production, fetch by id
-  const [loading, setLoading] = useState(false);
+  const [tender, setTender] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [bidLoading, setBidLoading] = useState(false);
   const [bidSuccess, setBidSuccess] = useState<BidSuccess | null>(null);
   const [form, setForm] = useState({
     company: "",
@@ -46,6 +47,34 @@ export default function TenderDetails() {
     proposal: "",
   });
 
+  useEffect(() => {
+    loadTender();
+  }, [id]);
+
+  const loadTender = async () => {
+    try {
+      const data = await getTender(id!);
+      setTender({
+        id: data.tender_id,
+        title: data.title,
+        organization: data.organization || "Unknown",
+        orgType: data.orgType || "Government",
+        budget: data.budget || 0,
+        deadline: new Date(data.deadline),
+        bids: data.bid_count || 0,
+        status: data.status || "OPEN",
+        description: data.description,
+        contactEmail: data.contactEmail || "contact@org.gov",
+        appId: "755776827",
+        criteria: data.criteria
+      });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to load tender", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleBid = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.company || !form.price || !form.timeline) {
@@ -53,7 +82,7 @@ export default function TenderDetails() {
       return;
     }
     
-    setLoading(true);
+    setBidLoading(true);
     try {
       const response = await submitBid({
         tender_id: tender.id,
@@ -67,10 +96,11 @@ export default function TenderDetails() {
         txId: response.tx_id 
       });
       toast({ title: "Bid Submitted!", description: "Your bid has been sealed on Algorand" });
+      loadTender(); // Refresh bid count
     } catch (error) {
       toast({ title: "Error", description: "Failed to submit bid", variant: "destructive" });
     } finally {
-      setLoading(false);
+      setBidLoading(false);
     }
   };
 
@@ -87,7 +117,13 @@ export default function TenderDetails() {
           <ArrowLeft className="w-4 h-4" /> Back to Tenders
         </Link>
 
-        {/* Tender Header */}
+        {loading && (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        )}
+
+        {!loading && tender && (/* Tender Header */}
         <div className="glass-card-elevated rounded-2xl p-8 mb-6 border-glow">
           <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
             <div>
@@ -210,10 +246,10 @@ export default function TenderDetails() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={bidLoading}
               className="w-full flex items-center justify-center gap-3 px-8 py-5 rounded-xl bg-primary text-primary-foreground font-bold text-lg hover:bg-primary/90 disabled:opacity-50 transition-all shadow-glow animate-pulse-glow"
             >
-              {loading ? (
+              {bidLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
                   Sealing bid on Algorand...
@@ -264,6 +300,7 @@ export default function TenderDetails() {
               View on Algorand Explorer <ExternalLink className="w-4 h-4" />
             </a>
           </div>
+        )}
         )}
       </div>
     </div>
