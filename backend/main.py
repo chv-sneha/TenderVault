@@ -228,6 +228,27 @@ async def get_results(tender_id: str):
 async def root():
     return {"message": "ClearBid API", "app_id": APP_ID}
 
+@app.get("/api/health")
+async def health():
+    try:
+        account_info = algod_client.account_info(deployer_address)
+        balance = account_info.get('amount', 0) / 1_000_000
+        return {
+            "status": "healthy",
+            "algorand_connected": True,
+            "deployer_address": deployer_address,
+            "balance_algo": balance,
+            "app_id": APP_ID,
+            "gemini_configured": gemini_model is not None,
+            "firebase_configured": USE_FIREBASE
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "deployer_address": deployer_address
+        }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
