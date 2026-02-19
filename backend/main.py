@@ -227,3 +227,7 @@ async def get_results(tender_id: str):
 @app.get("/")
 async def root():
     return {"message": "ClearBid API", "app_id": APP_ID}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
