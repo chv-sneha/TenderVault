@@ -29,7 +29,19 @@ Frontend runs on: http://localhost:5173
 ### 3. Backend Setup
 ```bash
 cd ../backend
+
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On Mac/Linux:
+source venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
+
 # Create .env file with:
 # DEPLOYER_MNEMONIC=your_algorand_mnemonic
 # GEMINI_API_KEY=your_gemini_key
