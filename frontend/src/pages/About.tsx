@@ -180,7 +180,7 @@ export default function About() {
         {/* Algorand link */}
         <div className="mt-12 text-center">
           <a
-            href="https://testnet.algoexplorer.io/application/755804596"
+            href="https://lora.algokit.io/testnet/application/755804596"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-primary/30 text-primary font-semibold text-sm hover:bg-primary/10 transition-all"

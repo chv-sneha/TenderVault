@@ -204,7 +204,7 @@ export default function TenderDetails() {
           {/* Algorand link */}
           <div className="mt-4 pt-4 border-t border-border">
             <a
-              href={`https://testnet.algoexplorer.io/application/${tender.appId}`}
+              href={`https://lora.algokit.io/testnet/application/${tender.appId}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-sm text-primary hover:underline font-mono"
@@ -216,22 +216,53 @@ export default function TenderDetails() {
 
         {/* Criteria Section */}
         <div className="glass-card rounded-2xl p-6 mb-6">
-          <div className="flex items-center gap-3">
-            <Lock className="w-5 h-5 text-orange-400" />
-            <div>
-              <h3 className="font-bold">Evaluation Criteria</h3>
-              <p className="text-sm text-muted-foreground">Encrypted — Will be revealed automatically after deadline</p>
+          <div className="flex items-center gap-3 mb-4">
+            {tender.status === "OPEN" ? (
+              <>
+                <Lock className="w-5 h-5 text-orange-400" />
+                <div>
+                  <h3 className="font-bold">Evaluation Criteria</h3>
+                  <p className="text-sm text-muted-foreground">Encrypted — Will be revealed automatically after deadline</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-5 h-5 text-primary" />
+                <div>
+                  <h3 className="font-bold">Evaluation Criteria Revealed</h3>
+                  <p className="text-sm text-muted-foreground">Criteria weights are now public</p>
+                </div>
+              </>
+            )}
+          </div>
+          {tender.status === "OPEN" ? (
+            <div className="mt-4 grid grid-cols-4 gap-3">
+              {["Price", "Experience", "Timeline", "Quality"].map((c) => (
+                <div key={c} className="flex flex-col items-center p-3 rounded-xl bg-orange-500/5 border border-orange-500/15">
+                  <Lock className="w-4 h-4 text-orange-400/60 mb-2" />
+                  <span className="text-xs text-muted-foreground text-center">{c}</span>
+                  <span className="text-xs text-orange-400/60 mt-1">??%</span>
+                </div>
+              ))}
             </div>
-          </div>
-          <div className="mt-4 grid grid-cols-4 gap-3">
-            {["Price", "Experience", "Timeline", "Quality"].map((c) => (
-              <div key={c} className="flex flex-col items-center p-3 rounded-xl bg-orange-500/5 border border-orange-500/15">
-                <Lock className="w-4 h-4 text-orange-400/60 mb-2" />
-                <span className="text-xs text-muted-foreground text-center">{c}</span>
-                <span className="text-xs text-orange-400/60 mt-1">??%</span>
-              </div>
-            ))}
-          </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {Object.entries(tender.criteria || {}).map(([name, weight]) => (
+                <div key={name}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium capitalize">{name}</span>
+                    <span className="text-primary font-mono font-bold">{weight}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-1000"
+                      style={{ width: `${weight}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Bid Count Info */}

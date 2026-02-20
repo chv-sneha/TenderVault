@@ -151,12 +151,12 @@ export default function Results() {
           )}
 
           <a
-            href={`https://testnet.algoexplorer.io/tx/${winner.bid_hash || 'WINNER'}`}
+            href={`https://lora.algokit.io/testnet/transaction/${winner.bid_hash || 'WINNER'}`}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-6 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gold-500/30 text-gold-400 text-sm font-semibold hover:bg-gold-500/10 transition-all"
           >
-            View on Algorand Explorer <ExternalLink className="w-4 h-4" />
+            View Bid on Algorand <ExternalLink className="w-4 h-4" />
           </a>
         </div>
         )}
@@ -225,8 +225,39 @@ export default function Results() {
 
         {/* Audit Trail */}
         <div className="glass-card rounded-2xl p-8">
-          <h2 className="text-xl font-bold mb-6">Audit Trail (Coming Soon)</h2>
-          <p className="text-muted-foreground">Full blockchain audit trail will be displayed here.</p>
+          <h2 className="text-xl font-bold mb-6">Blockchain Audit Trail</h2>
+          <div className="space-y-4">
+            {[
+              { event: "Tender Created", timestamp: tender.created_at, tx: tender.criteria_hash },
+              { event: "Bids Sealed", timestamp: results.ranked_bids[0]?.submitted_at, tx: results.ranked_bids[0]?.bid_hash },
+              { event: "Deadline Hit", timestamp: tender.deadline, tx: null },
+              { event: "Criteria Revealed", timestamp: tender.deadline, tx: tender.criteria_hash },
+              { event: "AI Evaluated", timestamp: new Date().toISOString(), tx: null },
+              { event: "Winner Declared", timestamp: new Date().toISOString(), tx: winner?.bid_hash }
+            ].filter(step => step.timestamp).map((step, i) => (
+              <div key={i} className="flex items-start gap-4 p-4 rounded-xl bg-muted/30 hover:bg-muted/50 transition-all">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 className="w-4 h-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold">{step.event}</div>
+                  <div className="text-sm text-muted-foreground mt-1">
+                    {new Date(step.timestamp).toLocaleString()}
+                  </div>
+                  {step.tx && (
+                    <a
+                      href={`https://lora.algokit.io/testnet/transaction/${step.tx}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2 font-mono"
+                    >
+                      {step.tx.substring(0, 16)}... <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>
