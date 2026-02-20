@@ -28,13 +28,24 @@ app.add_middleware(
 # Initialize Firebase
 try:
     if not firebase_admin._apps:
-        cred = credentials.Certificate('firebase-admin-key.json')
-        firebase_admin.initialize_app(cred)
+        # Try environment variable first (for Render deployment)
+        firebase_creds = os.getenv("FIREBASE_CREDENTIALS")
+        if firebase_creds:
+            import json
+            cred_dict = json.loads(firebase_creds)
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
+        else:
+            # Fallback to local file
+            firebase_key_path = os.path.join(os.path.dirname(__file__), 'firebase-admin-key.json')
+            cred = credentials.Certificate(firebase_key_path)
+            firebase_admin.initialize_app(cred)
     db = firestore.client()
     USE_FIREBASE = True
     print("✅ Firebase initialized successfully")
 except Exception as e:
     print(f"⚠️ Firebase initialization failed: {e}")
+    print("⚠️ Running without Firebase - using in-memory storage")
     db = None
     USE_FIREBASE = False
     # Fallback to in-memory storage
@@ -44,9 +55,11 @@ except Exception as e:
 # Initialize Algorand
 algod_client = algod.AlgodClient("", "https://testnet-api.algonode.cloud")
 deployer_mnemonic = os.getenv("DEPLOYER_MNEMONIC")
+if not deployer_mnemonic:
+    raise ValueError("DEPLOYER_MNEMONIC not set in environment")
 deployer_private_key = mnemonic.to_private_key(deployer_mnemonic)
 deployer_address = account.address_from_private_key(deployer_private_key)
-APP_ID = int(os.getenv("ALGORAND_APP_ID", "755776827"))
+APP_ID = int(os.getenv("ALGORAND_APP_ID", "755804596"))
 
 # Initialize Gemini AI
 gemini_key = os.getenv("GEMINI_API_KEY")

@@ -1,4 +1,4 @@
-const BASE_URL = "https://clearbid-backend-1.onrender.com";
+const BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
 const handleResponse = async (response) => {
   if (!response.ok) {
@@ -10,8 +10,9 @@ const handleResponse = async (response) => {
 
 const handleError = (error, context) => {
   console.error(`${context}:`, error);
-  if (error.message.includes('Failed to fetch')) {
-    throw new Error('Network error. Please check your connection.');
+  const msg = (error && error.message) ? error.message : String(error);
+  if (msg.includes('Failed to fetch') || msg.includes('Network error')) {
+    throw new Error('Network error connecting to backend. Check VITE_BACKEND_URL and backend status.');
   }
   throw error;
 };
