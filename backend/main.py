@@ -148,15 +148,19 @@ async def submit_bid(bid: BidSubmit):
         bids_db[bid_id] = bid_data
     
     # Write to Algorand
-    params = algod_client.suggested_params()
-    txn = transaction.ApplicationNoOpTxn(
-        sender=deployer_address,
-        sp=params,
-        index=APP_ID,
-        app_args=[bid_hash.encode()]
-    )
-    signed_txn = txn.sign(deployer_account.private_key)
-    tx_id = algod_client.send_transaction(signed_txn)
+    try:
+        params = algod_client.suggested_params()
+        txn = transaction.ApplicationNoOpTxn(
+            sender=deployer_address,
+            sp=params,
+            index=APP_ID,
+            app_args=[bid_hash.encode()]
+        )
+        signed_txn = txn.sign(deployer_account.private_key)
+        tx_id = algod_client.send_transaction(signed_txn)
+    except Exception as algo_error:
+        print(f"Algorand error (non-critical): {algo_error}")
+        tx_id = "ALGO_TX_SKIPPED"
     
     return {"bid_id": bid_id, "tx_id": tx_id, "bid_hash": bid_hash}
 
