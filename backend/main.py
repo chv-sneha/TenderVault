@@ -5,13 +5,7 @@ from typing import List, Optional, Dict
 import os
 from dotenv import load_dotenv
 from algosdk.v2client import algod
-from algosdk import transaction, mnemonic
-from algosdk.account import address_from_private_key
-
-class Account:
-    def __init__(self, private_key):
-        self.private_key = private_key
-        self.address = address_from_private_key(private_key)
+from algosdk import account, mnemonic, transaction
 import google.generativeai as genai
 import hashlib
 import json
@@ -21,7 +15,7 @@ from firebase_admin import credentials, firestore
 
 load_dotenv()
 
-app = FastAPI(title="ClearBid API", version="1.0.1")
+app = FastAPI(title="ClearBid API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,12 +28,8 @@ app.add_middleware(
 # Initialize Firebase
 try:
     if not firebase_admin._apps:
-        cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        if cred_path and os.path.exists(cred_path):
-            cred = credentials.Certificate(cred_path)
-            firebase_admin.initialize_app(cred)
-        else:
-            firebase_admin.initialize_app()
+        cred = credentials.Certificate('firebase-admin-key.json')
+        firebase_admin.initialize_app(cred)
     db = firestore.client()
     USE_FIREBASE = True
     print("✅ Firebase initialized successfully")
@@ -47,16 +37,16 @@ except Exception as e:
     print(f"⚠️ Firebase initialization failed: {e}")
     db = None
     USE_FIREBASE = False
+    # Fallback to in-memory storage
     tenders_db: Dict[str, dict] = {}
     bids_db: Dict[str, dict] = {}
 
-# Initialize Algorand with AlgoKit
+# Initialize Algorand
 algod_client = algod.AlgodClient("", "https://testnet-api.algonode.cloud")
 deployer_mnemonic = os.getenv("DEPLOYER_MNEMONIC")
 deployer_private_key = mnemonic.to_private_key(deployer_mnemonic)
-deployer_account = Account(private_key=deployer_private_key)
-deployer_address = deployer_account.address
-APP_ID = int(os.getenv("ALGORAND_APP_ID", "755803777"))
+deployer_address = account.address_from_private_key(deployer_private_key)
+APP_ID = int(os.getenv("ALGORAND_APP_ID", "755776827"))
 
 # Initialize Gemini AI
 gemini_key = os.getenv("GEMINI_API_KEY")
@@ -122,7 +112,7 @@ async def create_tender(tender: TenderCreate):
                 index=APP_ID,
                 app_args=[criteria_hash.encode()]
             )
-            signed_txn = txn.sign(deployer_account.private_key)
+            signed_txn = txn.sign(deployer_private_key)
             tx_id = algod_client.send_transaction(signed_txn)
         except Exception as algo_error:
             print(f"Algorand error (non-critical): {algo_error}")
@@ -156,19 +146,15 @@ async def submit_bid(bid: BidSubmit):
         bids_db[bid_id] = bid_data
     
     # Write to Algorand
-    try:
-        params = algod_client.suggested_params()
-        txn = transaction.ApplicationNoOpTxn(
-            sender=deployer_address,
-            sp=params,
-            index=APP_ID,
-            app_args=[bid_hash.encode()]
-        )
-        signed_txn = txn.sign(deployer_account.private_key)
-        tx_id = algod_client.send_transaction(signed_txn)
-    except Exception as algo_error:
-        print(f"Algorand error (non-critical): {algo_error}")
-        tx_id = "ALGO_TX_SKIPPED"
+    params = algod_client.suggested_params()
+    txn = transaction.ApplicationNoOpTxn(
+        sender=deployer_address,
+        sp=params,
+        index=APP_ID,
+        app_args=[bid_hash.encode()]
+    )
+    signed_txn = txn.sign(deployer_private_key)
+    tx_id = algod_client.send_transaction(signed_txn)
     
     return {"bid_id": bid_id, "tx_id": tx_id, "bid_hash": bid_hash}
 
@@ -245,8 +231,10 @@ async def get_all_tenders():
         tenders = []
         for tender_doc in tenders_ref:
             tender_data = tender_doc.to_dict()
+            # Ensure tender_id exists
             if 'tender_id' not in tender_data:
                 tender_data['tender_id'] = tender_doc.id
+            # Normalize status to uppercase
             if 'status' in tender_data:
                 tender_data['status'] = tender_data['status'].upper()
             tenders.append(tender_data)
@@ -278,12 +266,7 @@ async def get_tender(tender_id: str):
 async def get_results(tender_id: str):
     if USE_FIREBASE:
         bids_ref = db.collection("bids").where("tender_id", "==", tender_id).stream()
-        bids = []
-        for bid_doc in bids_ref:
-            bid_data = bid_doc.to_dict()
-            if 'bid_id' not in bid_data:
-                bid_data['bid_id'] = bid_doc.id
-            bids.append(bid_data)
+        bids = [bid.to_dict() for bid in bids_ref]
     else:
         bids = [b for b in bids_db.values() if b["tender_id"] == tender_id]
     
@@ -340,25 +323,19 @@ async def get_user_bids(user_id: str):
         all_bids = []
         for bid_doc in bids_ref:
             bid_data = bid_doc.to_dict()
-            if 'bid_id' not in bid_data:
-                bid_data['bid_id'] = bid_doc.id
             if 'tender_id' in bid_data:
-                try:
-                    tender_doc = db.collection("tenders").document(bid_data['tender_id']).get()
-                    if tender_doc.exists:
-                        tender_data = tender_doc.to_dict()
-                        bid_data['tender_title'] = tender_data.get('title', 'Unknown')
-                        bid_data['tender_status'] = tender_data.get('status', 'UNKNOWN')
-                except Exception as e:
-                    print(f"Error fetching tender: {e}")
-                    bid_data['tender_title'] = 'Unknown'
-                    bid_data['tender_status'] = 'UNKNOWN'
+                tender_doc = db.collection("tenders").document(bid_data['tender_id']).get()
+                if tender_doc.exists:
+                    tender_data = tender_doc.to_dict()
+                    bid_data['tender_title'] = tender_data.get('title', 'Unknown')
+                    bid_data['tender_status'] = tender_data.get('status', 'UNKNOWN')
             all_bids.append(bid_data)
         
         print(f"Total bids in DB: {len(all_bids)}")
         if all_bids:
             print(f"Sample bid fields: {list(all_bids[0].keys())}")
         
+        # Return ALL bids for now (old data doesn't have user_id)
         return {"bids": all_bids}
     else:
         bids = list(bids_db.values())

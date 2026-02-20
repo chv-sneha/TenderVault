@@ -1,17 +1,11 @@
 services:
   - type: web
-    name: tendervault-api
+    name: clearbid-api
     env: python
-    region: oregon
-    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DEPLOYER_MNEMONIC
         sync: false
-      - key: GEMINI_API_KEY
+      - key: ANTHROPIC_API_KEY
         sync: false
-      - key: ALGORAND_APP_ID
-        value: "755776827"
-      - key: PYTHON_VERSION
-        value: "3.11.0"
