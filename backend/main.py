@@ -5,13 +5,7 @@ from typing import List, Optional, Dict
 import os
 from dotenv import load_dotenv
 from algosdk.v2client import algod
-from algosdk import transaction, mnemonic
-from algosdk.account import address_from_private_key
-
-class Account:
-    def __init__(self, private_key):
-        self.private_key = private_key
-        self.address = address_from_private_key(private_key)
+from algosdk import account, mnemonic, transaction
 import google.generativeai as genai
 import hashlib
 import json
@@ -21,7 +15,7 @@ from firebase_admin import credentials, firestore
 
 load_dotenv()
 
-app = FastAPI(title="ClearBid API", version="1.0.1")
+app = FastAPI(title="ClearBid API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,113 +25,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Firebase (robust: support path, JSON env, or bundled key file)
-tenders_db: Dict[str, dict] = {}
-bids_db: Dict[str, dict] = {}
+# Initialize Firebase
 try:
     if not firebase_admin._apps:
-        cred = None
-        sa_project = None
-        sa_email = None
-        cred_env = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        # Case 1: env var is a path to a file
-        if cred_env and os.path.exists(cred_env):
-            # parse file to capture project_id and client_email for logging
-            try:
-                with open(cred_env, 'r', encoding='utf-8') as f:
-                    parsed = json.load(f)
-                    sa_project = parsed.get('project_id')
-                    sa_email = parsed.get('client_email')
-            except Exception:
-                pass
-            cred = credentials.Certificate(cred_env)
-            cred_source = f"file:{cred_env}"
-        else:
-            # Case 2: env var contains the JSON credentials string
-            if cred_env:
-                try:
-                    parsed = json.loads(cred_env)
-                    sa_project = parsed.get('project_id')
-                    sa_email = parsed.get('client_email')
-                    cred = credentials.Certificate(parsed)
-                    cred_source = "env:json"
-                except Exception:
-                    cred = None
-            # Case 3: fallback to bundled key file in backend folder
-            if not cred:
-                local_key = os.path.join(os.path.dirname(__file__), "firebase-admin-key.json")
-                if os.path.exists(local_key):
-                    try:
-                        with open(local_key, 'r', encoding='utf-8') as f:
-                            parsed = json.load(f)
-                            sa_project = parsed.get('project_id')
-                            sa_email = parsed.get('client_email')
-                    except Exception:
-                        pass
-                    cred = credentials.Certificate(local_key)
-                    cred_source = f"file:{local_key}"
-
-        if cred:
-            firebase_admin.initialize_app(cred)
-        else:
-            # Try application default credentials (works on GCP/Render when configured)
-            firebase_admin.initialize_app()
-            cred_source = "application-default"
-
+        cred = credentials.Certificate('firebase-admin-key.json')
+        firebase_admin.initialize_app(cred)
     db = firestore.client()
     USE_FIREBASE = True
-    # Determine effective project and log service-account info to diagnose wrong-project reads
-    try:
-        effective_project = None
-        # google firestore client stores project in _client or project attribute
-        try:
-            effective_project = getattr(db, 'project', None) or getattr(db, '_client', None) and getattr(db._client, 'project', None)
-        except Exception:
-            effective_project = None
-
-        # If we didn't extract service-account info earlier, try reading from app credentials if possible
-        try:
-            firebase_app = firebase_admin.get_app()
-            cred_info = getattr(firebase_app, 'credential', None)
-        except Exception:
-            cred_info = None
-
-    except Exception:
-        effective_project = None
-
-    # Log Firestore collections counts to help debug empty results
-    try:
-        tenders_count = len(list(db.collection("tenders").limit(1000).stream()))
-    except Exception:
-        tenders_count = None
-    try:
-        bids_count = len(list(db.collection("bids").limit(1000).stream()))
-    except Exception:
-        bids_count = None
-
     print("✅ Firebase initialized successfully")
-    print(f"   credential_source={locals().get('cred_source', 'unknown')}, sa_project={sa_project}, sa_email={sa_email}, effective_project={effective_project}")
-    print(f"   tenders_count={tenders_count}, bids_count={bids_count}")
 except Exception as e:
     print(f"⚠️ Firebase initialization failed: {e}")
     db = None
     USE_FIREBASE = False
+    # Fallback to in-memory storage
+    tenders_db: Dict[str, dict] = {}
+    bids_db: Dict[str, dict] = {}
 
-# Initialize Algorand with AlgoKit (make DEPLOYER_MNEMONIC optional)
+# Initialize Algorand
 algod_client = algod.AlgodClient("", "https://testnet-api.algonode.cloud")
-deployer_mnemonic = os.getenv("DEPLOYER_MNEMONIC", "")
-deployer_private_key = None
-deployer_account = None
-deployer_address = None
-if deployer_mnemonic:
-    try:
-        deployer_private_key = mnemonic.to_private_key(deployer_mnemonic)
-        deployer_account = Account(private_key=deployer_private_key)
-        deployer_address = deployer_account.address
-    except Exception as e:
-        print(f"⚠️ Invalid DEPLOYER_MNEMONIC: {e}")
-
-APP_ID = int(os.getenv("ALGORAND_APP_ID", "755803777"))
+deployer_mnemonic = os.getenv("DEPLOYER_MNEMONIC")
+deployer_private_key = mnemonic.to_private_key(deployer_mnemonic)
+deployer_address = account.address_from_private_key(deployer_private_key)
+APP_ID = int(os.getenv("ALGORAND_APP_ID", "755776827"))
 
 # Initialize Gemini AI
 gemini_key = os.getenv("GEMINI_API_KEY")
@@ -203,7 +112,7 @@ async def create_tender(tender: TenderCreate):
                 index=APP_ID,
                 app_args=[criteria_hash.encode()]
             )
-            signed_txn = txn.sign(deployer_account.private_key)
+            signed_txn = txn.sign(deployer_private_key)
             tx_id = algod_client.send_transaction(signed_txn)
         except Exception as algo_error:
             print(f"Algorand error (non-critical): {algo_error}")
@@ -237,19 +146,15 @@ async def submit_bid(bid: BidSubmit):
         bids_db[bid_id] = bid_data
     
     # Write to Algorand
-    try:
-        params = algod_client.suggested_params()
-        txn = transaction.ApplicationNoOpTxn(
-            sender=deployer_address,
-            sp=params,
-            index=APP_ID,
-            app_args=[bid_hash.encode()]
-        )
-        signed_txn = txn.sign(deployer_account.private_key)
-        tx_id = algod_client.send_transaction(signed_txn)
-    except Exception as algo_error:
-        print(f"Algorand error (non-critical): {algo_error}")
-        tx_id = "ALGO_TX_SKIPPED"
+    params = algod_client.suggested_params()
+    txn = transaction.ApplicationNoOpTxn(
+        sender=deployer_address,
+        sp=params,
+        index=APP_ID,
+        app_args=[bid_hash.encode()]
+    )
+    signed_txn = txn.sign(deployer_private_key)
+    tx_id = algod_client.send_transaction(signed_txn)
     
     return {"bid_id": bid_id, "tx_id": tx_id, "bid_hash": bid_hash}
 
@@ -326,34 +231,15 @@ async def get_all_tenders():
         tenders = []
         for tender_doc in tenders_ref:
             tender_data = tender_doc.to_dict()
+            # Ensure tender_id exists
             if 'tender_id' not in tender_data:
                 tender_data['tender_id'] = tender_doc.id
+            # Normalize status to uppercase
             if 'status' in tender_data:
                 tender_data['status'] = tender_data['status'].upper()
             tenders.append(tender_data)
     else:
         tenders = list(tenders_db.values())
-    # If no tenders found, return a safe sample so frontend has data to display
-    if not tenders:
-        sample = {
-            "tender_id": "sample-0001",
-            "title": "Sample: Supply of Medical Equipment",
-            "description": "Seed data: invitation to supply medical devices",
-            "criteria": {"price": 50, "quality": 30, "delivery": 20},
-            "deadline": (datetime.now()).isoformat(),
-            "organization": "Sample Hospital",
-            "orgType": "Hospital",
-            "budget": 50000,
-            "criteria_hash": "samplehash",
-            "created_at": datetime.now().isoformat(),
-            "status": "OPEN",
-            "bid_count": 0,
-            "user_id": "system",
-            "email": "noreply@example.com"
-        }
-        print("⚠️ No tenders found in DB — returning sample tender for UI")
-        return {"tenders": [sample]}
-
     return {"tenders": tenders}
 
 @app.get("/api/tender/{tender_id}")
@@ -380,12 +266,7 @@ async def get_tender(tender_id: str):
 async def get_results(tender_id: str):
     if USE_FIREBASE:
         bids_ref = db.collection("bids").where("tender_id", "==", tender_id).stream()
-        bids = []
-        for bid_doc in bids_ref:
-            bid_data = bid_doc.to_dict()
-            if 'bid_id' not in bid_data:
-                bid_data['bid_id'] = bid_doc.id
-            bids.append(bid_data)
+        bids = [bid.to_dict() for bid in bids_ref]
     else:
         bids = [b for b in bids_db.values() if b["tender_id"] == tender_id]
     
@@ -442,25 +323,19 @@ async def get_user_bids(user_id: str):
         all_bids = []
         for bid_doc in bids_ref:
             bid_data = bid_doc.to_dict()
-            if 'bid_id' not in bid_data:
-                bid_data['bid_id'] = bid_doc.id
             if 'tender_id' in bid_data:
-                try:
-                    tender_doc = db.collection("tenders").document(bid_data['tender_id']).get()
-                    if tender_doc.exists:
-                        tender_data = tender_doc.to_dict()
-                        bid_data['tender_title'] = tender_data.get('title', 'Unknown')
-                        bid_data['tender_status'] = tender_data.get('status', 'UNKNOWN')
-                except Exception as e:
-                    print(f"Error fetching tender: {e}")
-                    bid_data['tender_title'] = 'Unknown'
-                    bid_data['tender_status'] = 'UNKNOWN'
+                tender_doc = db.collection("tenders").document(bid_data['tender_id']).get()
+                if tender_doc.exists:
+                    tender_data = tender_doc.to_dict()
+                    bid_data['tender_title'] = tender_data.get('title', 'Unknown')
+                    bid_data['tender_status'] = tender_data.get('status', 'UNKNOWN')
             all_bids.append(bid_data)
         
         print(f"Total bids in DB: {len(all_bids)}")
         if all_bids:
             print(f"Sample bid fields: {list(all_bids[0].keys())}")
         
+        # Return ALL bids for now (old data doesn't have user_id)
         return {"bids": all_bids}
     else:
         bids = list(bids_db.values())
@@ -468,19 +343,12 @@ async def get_user_bids(user_id: str):
 
 @app.get("/api/health")
 async def health():
-    # Report health; if deployer_address isn't configured, indicate Algorand not connected
     try:
-        if deployer_address:
-            account_info = algod_client.account_info(deployer_address)
-            balance = account_info.get('amount', 0) / 1_000_000
-            algorand_connected = True
-        else:
-            balance = 0
-            algorand_connected = False
-
+        account_info = algod_client.account_info(deployer_address)
+        balance = account_info.get('amount', 0) / 1_000_000
         return {
             "status": "healthy",
-            "algorand_connected": algorand_connected,
+            "algorand_connected": True,
             "deployer_address": deployer_address,
             "balance_algo": balance,
             "app_id": APP_ID,
