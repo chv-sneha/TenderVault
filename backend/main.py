@@ -6,7 +6,12 @@ import os
 from dotenv import load_dotenv
 from algosdk.v2client import algod
 from algosdk import transaction, mnemonic
-from algokit_utils import Account
+from algosdk.account import address_from_private_key
+
+class Account:
+    def __init__(self, private_key):
+        self.private_key = private_key
+        self.address = address_from_private_key(private_key)
 import google.generativeai as genai
 import hashlib
 import json
@@ -16,7 +21,7 @@ from firebase_admin import credentials, firestore
 
 load_dotenv()
 
-app = FastAPI(title="ClearBid API")
+app = FastAPI(title="ClearBid API", version="1.0.1")
 
 app.add_middleware(
     CORSMiddleware,
@@ -242,10 +247,8 @@ async def get_all_tenders():
         tenders = []
         for tender_doc in tenders_ref:
             tender_data = tender_doc.to_dict()
-            # Ensure tender_id exists
             if 'tender_id' not in tender_data:
                 tender_data['tender_id'] = tender_doc.id
-            # Normalize status to uppercase
             if 'status' in tender_data:
                 tender_data['status'] = tender_data['status'].upper()
             tenders.append(tender_data)
@@ -277,7 +280,12 @@ async def get_tender(tender_id: str):
 async def get_results(tender_id: str):
     if USE_FIREBASE:
         bids_ref = db.collection("bids").where("tender_id", "==", tender_id).stream()
-        bids = [bid.to_dict() for bid in bids_ref]
+        bids = []
+        for bid_doc in bids_ref:
+            bid_data = bid_doc.to_dict()
+            if 'bid_id' not in bid_data:
+                bid_data['bid_id'] = bid_doc.id
+            bids.append(bid_data)
     else:
         bids = [b for b in bids_db.values() if b["tender_id"] == tender_id]
     
@@ -334,19 +342,25 @@ async def get_user_bids(user_id: str):
         all_bids = []
         for bid_doc in bids_ref:
             bid_data = bid_doc.to_dict()
+            if 'bid_id' not in bid_data:
+                bid_data['bid_id'] = bid_doc.id
             if 'tender_id' in bid_data:
-                tender_doc = db.collection("tenders").document(bid_data['tender_id']).get()
-                if tender_doc.exists:
-                    tender_data = tender_doc.to_dict()
-                    bid_data['tender_title'] = tender_data.get('title', 'Unknown')
-                    bid_data['tender_status'] = tender_data.get('status', 'UNKNOWN')
+                try:
+                    tender_doc = db.collection("tenders").document(bid_data['tender_id']).get()
+                    if tender_doc.exists:
+                        tender_data = tender_doc.to_dict()
+                        bid_data['tender_title'] = tender_data.get('title', 'Unknown')
+                        bid_data['tender_status'] = tender_data.get('status', 'UNKNOWN')
+                except Exception as e:
+                    print(f"Error fetching tender: {e}")
+                    bid_data['tender_title'] = 'Unknown'
+                    bid_data['tender_status'] = 'UNKNOWN'
             all_bids.append(bid_data)
         
         print(f"Total bids in DB: {len(all_bids)}")
         if all_bids:
             print(f"Sample bid fields: {list(all_bids[0].keys())}")
         
-        # Return ALL bids for now (old data doesn't have user_id)
         return {"bids": all_bids}
     else:
         bids = list(bids_db.values())
