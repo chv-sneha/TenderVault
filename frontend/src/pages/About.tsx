@@ -72,10 +72,10 @@ export default function About() {
           <div className="flex flex-col items-center justify-center gap-6">
             <div className="text-center">
               <div className="text-sm text-muted-foreground mb-2">Deployed App ID</div>
-              <div className="text-3xl font-bold font-mono text-primary mb-6">847392018</div>
+              <div className="text-3xl font-bold font-mono text-primary mb-6">755804596</div>
             </div>
             <a
-              href="https://testnet.algoexplorer.io/application/847392018"
+              href="https://testnet.algoexplorer.io/application/755804596"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-primary/30 text-primary text-sm font-semibold hover:bg-primary/10 transition-all"
@@ -180,7 +180,7 @@ export default function About() {
         {/* Algorand link */}
         <div className="mt-12 text-center">
           <a
-            href="https://testnet.algoexplorer.io"
+            href="https://testnet.algoexplorer.io/application/755804596"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-primary/30 text-primary font-semibold text-sm hover:bg-primary/10 transition-all"

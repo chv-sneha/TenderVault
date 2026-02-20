@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8000";
+const BASE_URL = "https://clearbid-backend-1.onrender.com";
 
 const handleResponse = async (response) => {
   if (!response.ok) {

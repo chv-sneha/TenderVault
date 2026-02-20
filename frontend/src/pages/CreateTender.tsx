@@ -85,8 +85,8 @@ export default function CreateTender() {
       
       setSuccess({
         tenderId: response.tender_id,
-        appId: "755776827",
-        explorerLink: `https://lora.algokit.io/testnet/transaction/${response.tx_id}`,
+        appId: "755804596",
+        explorerLink: `https://lora.algokit.io/testnet/application/755804596`,
         tenderLink: `${window.location.origin}/tenders/${response.tender_id}`,
       });
       toast({ title: "Success!", description: "Tender created on Algorand" });

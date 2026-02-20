@@ -68,7 +68,7 @@ export default function TenderDetails() {
         status: data.status || "OPEN",
         description: data.description,
         contactEmail: data.contactEmail || "contact@org.gov",
-        appId: "755776827",
+        appId: "755804596",
         criteria: data.criteria
       });
     } catch (error) {
@@ -340,7 +340,7 @@ export default function TenderDetails() {
             </div>
 
             <a
-              href={`https://testnet.algoexplorer.io/tx/${bidSuccess.txId}`}
+              href={`https://lora.algokit.io/testnet/application/755804596`}
               target="_blank"
               rel="noopener noreferrer"
               className="mt-6 flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-all"
