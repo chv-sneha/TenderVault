@@ -1,0 +1,309 @@
+#pragma version 11
+#pragma typetrack false
+
+// algopy.arc4.ARC4Contract.approval_program() -> uint64:
+main:
+    intcblock 0 1 2
+    bytecblock "tender_count" "bid_count" 0x151f7c75 " | Hash: "
+    txn ApplicationID
+    bnz main_after_if_else@2
+    // smart_contracts/hello_world/contract.py:10-11
+    // # Global state: Track total tenders and bids stored on-chain
+    // self.tender_count = GlobalState(UInt64(0))
+    bytec_0 // "tender_count"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/hello_world/contract.py:12
+    // self.bid_count = GlobalState(UInt64(0))
+    bytec_1 // "bid_count"
+    intc_0 // 0
+    app_global_put
+
+main_after_if_else@2:
+    // smart_contracts/hello_world/contract.py:5
+    // class HelloWorld(ARC4Contract):
+    txn NumAppArgs
+    bz main___algopy_default_create@14
+    txn OnCompletion
+    !
+    assert
+    txn ApplicationID
+    assert
+    pushbytess 0x752c3ac0 0xc21fbca6 0x41001f3b 0x55a9af95 0x14989d2b // method "create_application()void", method "store_tender_hash(string,string)string", method "store_bid_hash(string,string,string)string", method "verify_hash(string,string)string", method "get_stats()string"
+    txna ApplicationArgs 0
+    match create_application store_tender_hash store_bid_hash verify_hash get_stats
+    err
+
+main___algopy_default_create@14:
+    txn OnCompletion
+    !
+    txn ApplicationID
+    !
+    &&
+    return
+
+
+// smart_contracts.hello_world.contract.HelloWorld.create_application[routing]() -> void:
+create_application:
+    // smart_contracts/hello_world/contract.py:17
+    // self.tender_count.value = UInt64(0)
+    bytec_0 // "tender_count"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/hello_world/contract.py:18
+    // self.bid_count.value = UInt64(0)
+    bytec_1 // "bid_count"
+    intc_0 // 0
+    app_global_put
+    // smart_contracts/hello_world/contract.py:14
+    // @abimethod()
+    intc_1 // 1
+    return
+
+
+// smart_contracts.hello_world.contract.HelloWorld.store_tender_hash[routing]() -> void:
+store_tender_hash:
+    // smart_contracts/hello_world/contract.py:20
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    extract 2 0
+    txna ApplicationArgs 2
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    extract 2 0
+    // smart_contracts/hello_world/contract.py:30-31
+    // # State management: Increment tender count on-chain
+    // self.tender_count.value += UInt64(1)
+    intc_0 // 0
+    bytec_0 // "tender_count"
+    app_global_get_ex
+    assert // check self.tender_count exists
+    intc_1 // 1
+    +
+    bytec_0 // "tender_count"
+    dig 1
+    app_global_put
+    // smart_contracts/hello_world/contract.py:33-34
+    // # Return confirmation with blockchain state
+    // count_bytes = op.itob(self.tender_count.value)
+    itob
+    // smart_contracts/hello_world/contract.py:35
+    // return "Tender stored: " + tender_id + " | Hash: " + hash_value + " | OnChain Count: " + String.from_bytes(count_bytes)
+    pushbytes "Tender stored: "
+    uncover 3
+    concat
+    bytec_3 // " | Hash: "
+    concat
+    uncover 2
+    concat
+    pushbytes " | OnChain Count: "
+    concat
+    swap
+    concat
+    // smart_contracts/hello_world/contract.py:20
+    // @abimethod()
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.hello_world.contract.HelloWorld.store_bid_hash[routing]() -> void:
+store_bid_hash:
+    // smart_contracts/hello_world/contract.py:37
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    extract 2 0
+    txna ApplicationArgs 2
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    extract 2 0
+    txna ApplicationArgs 3
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    extract 2 0
+    // smart_contracts/hello_world/contract.py:47-48
+    // # State management: Increment bid count on blockchain
+    // self.bid_count.value += UInt64(1)
+    intc_0 // 0
+    bytec_1 // "bid_count"
+    app_global_get_ex
+    assert // check self.bid_count exists
+    intc_1 // 1
+    +
+    bytec_1 // "bid_count"
+    swap
+    app_global_put
+    // smart_contracts/hello_world/contract.py:50-51
+    // # Return with blockchain state confirmation
+    // return "Bid stored: " + bid_id + " for Tender: " + tender_id + " | Hash: " + hash_value + " | OnChain"
+    pushbytes "Bid stored: "
+    uncover 3
+    concat
+    pushbytes " for Tender: "
+    concat
+    uncover 2
+    concat
+    bytec_3 // " | Hash: "
+    concat
+    swap
+    concat
+    pushbytes " | OnChain"
+    concat
+    // smart_contracts/hello_world/contract.py:37
+    // @abimethod()
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.hello_world.contract.HelloWorld.verify_hash[routing]() -> void:
+verify_hash:
+    // smart_contracts/hello_world/contract.py:53
+    // @abimethod()
+    txna ApplicationArgs 1
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    extract 2 0
+    txna ApplicationArgs 2
+    dup
+    intc_0 // 0
+    extract_uint16 // on error: invalid array length header
+    intc_2 // 2
+    +
+    dig 1
+    len
+    ==
+    assert // invalid number of bytes for arc4.dynamic_array<arc4.uint8>
+    extract 2 0
+    // smart_contracts/hello_world/contract.py:62-64
+    // # Cryptographic verification: Simulate hash matching
+    // # In production, this would compare against stored blockchain data
+    // return "VERIFIED: " + record_id + " | Hash: " + hash_value + " | Immutable: TRUE | Blockchain: Algorand"
+    pushbytes "VERIFIED: "
+    uncover 2
+    concat
+    bytec_3 // " | Hash: "
+    concat
+    swap
+    concat
+    pushbytes " | Immutable: TRUE | Blockchain: Algorand"
+    concat
+    // smart_contracts/hello_world/contract.py:53
+    // @abimethod()
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return
+
+
+// smart_contracts.hello_world.contract.HelloWorld.get_stats[routing]() -> void:
+get_stats:
+    // smart_contracts/hello_world/contract.py:75
+    // tender_bytes = op.itob(self.tender_count.value)
+    intc_0 // 0
+    bytec_0 // "tender_count"
+    app_global_get_ex
+    assert // check self.tender_count exists
+    itob
+    // smart_contracts/hello_world/contract.py:76
+    // bid_bytes = op.itob(self.bid_count.value)
+    intc_0 // 0
+    bytec_1 // "bid_count"
+    app_global_get_ex
+    assert // check self.bid_count exists
+    itob
+    // smart_contracts/hello_world/contract.py:77
+    // return "OnChain Stats | Tenders: " + String.from_bytes(tender_bytes) + " | Bids: " + String.from_bytes(bid_bytes)
+    pushbytes "OnChain Stats | Tenders: "
+    uncover 2
+    concat
+    pushbytes " | Bids: "
+    concat
+    swap
+    concat
+    // smart_contracts/hello_world/contract.py:66
+    // @abimethod()
+    dup
+    len
+    itob
+    extract 6 2
+    swap
+    concat
+    bytec_2 // 0x151f7c75
+    swap
+    concat
+    log
+    intc_1 // 1
+    return

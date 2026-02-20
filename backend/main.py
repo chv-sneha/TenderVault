@@ -5,7 +5,8 @@ from typing import List, Optional, Dict
 import os
 from dotenv import load_dotenv
 from algosdk.v2client import algod
-from algosdk import account, mnemonic, transaction
+from algosdk import transaction, mnemonic
+from algokit_utils import Account
 import google.generativeai as genai
 import hashlib
 import json
@@ -41,12 +42,13 @@ except Exception as e:
     tenders_db: Dict[str, dict] = {}
     bids_db: Dict[str, dict] = {}
 
-# Initialize Algorand
+# Initialize Algorand with AlgoKit
 algod_client = algod.AlgodClient("", "https://testnet-api.algonode.cloud")
 deployer_mnemonic = os.getenv("DEPLOYER_MNEMONIC")
 deployer_private_key = mnemonic.to_private_key(deployer_mnemonic)
-deployer_address = account.address_from_private_key(deployer_private_key)
-APP_ID = int(os.getenv("ALGORAND_APP_ID", "755776827"))
+deployer_account = Account(private_key=deployer_private_key)
+deployer_address = deployer_account.address
+APP_ID = int(os.getenv("ALGORAND_APP_ID", "755803777"))
 
 # Initialize Gemini AI
 gemini_key = os.getenv("GEMINI_API_KEY")
@@ -112,7 +114,7 @@ async def create_tender(tender: TenderCreate):
                 index=APP_ID,
                 app_args=[criteria_hash.encode()]
             )
-            signed_txn = txn.sign(deployer_private_key)
+            signed_txn = txn.sign(deployer_account.private_key)
             tx_id = algod_client.send_transaction(signed_txn)
         except Exception as algo_error:
             print(f"Algorand error (non-critical): {algo_error}")
@@ -153,7 +155,7 @@ async def submit_bid(bid: BidSubmit):
         index=APP_ID,
         app_args=[bid_hash.encode()]
     )
-    signed_txn = txn.sign(deployer_private_key)
+    signed_txn = txn.sign(deployer_account.private_key)
     tx_id = algod_client.send_transaction(signed_txn)
     
     return {"bid_id": bid_id, "tx_id": tx_id, "bid_hash": bid_hash}
