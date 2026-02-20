@@ -161,7 +161,7 @@ export default function TenderDetails() {
                   View Results
                 </Link>
               )}
-              {tender.status === "OPEN" && accountType === "government" && tender.bids > 0 && (
+              {tender.status === "OPEN" && (accountType === "organization" || accountType === "government") && tender.bids > 0 && (
                 <button
                   onClick={handleEvaluate}
                   disabled={evaluating}
@@ -274,7 +274,7 @@ export default function TenderDetails() {
         </div>
 
         {/* Bid Form */}
-        {tender.status === "OPEN" && !bidSuccess && accountType !== "government" && (
+        {tender.status === "OPEN" && !bidSuccess && accountType !== "organization" && accountType !== "government" && (
           <form onSubmit={handleBid} className="glass-card rounded-2xl p-8 space-y-6">
             <h2 className="text-2xl font-bold">Submit Your Bid</h2>
 
