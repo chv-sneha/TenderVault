@@ -31,31 +31,68 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize Firebase
+# Initialize Firebase (robust: support path, JSON env, or bundled key file)
+tenders_db: Dict[str, dict] = {}
+bids_db: Dict[str, dict] = {}
 try:
     if not firebase_admin._apps:
-        cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
-        if cred_path and os.path.exists(cred_path):
-            cred = credentials.Certificate(cred_path)
+        cred = None
+        cred_env = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        # Case 1: env var is a path to a file
+        if cred_env and os.path.exists(cred_env):
+            cred = credentials.Certificate(cred_env)
+        else:
+            # Case 2: env var contains the JSON credentials string
+            if cred_env:
+                try:
+                    cred_json = json.loads(cred_env)
+                    cred = credentials.Certificate(cred_json)
+                except Exception:
+                    cred = None
+            # Case 3: fallback to bundled key file in backend folder
+            if not cred:
+                local_key = os.path.join(os.path.dirname(__file__), "firebase-admin-key.json")
+                if os.path.exists(local_key):
+                    cred = credentials.Certificate(local_key)
+
+        if cred:
             firebase_admin.initialize_app(cred)
         else:
+            # Try application default credentials (works on GCP/Render when configured)
             firebase_admin.initialize_app()
+
     db = firestore.client()
     USE_FIREBASE = True
+    # Log Firestore collections counts to help debug empty results
+    try:
+        tenders_count = len(list(db.collection("tenders").limit(1000).stream()))
+    except Exception:
+        tenders_count = None
+    try:
+        bids_count = len(list(db.collection("bids").limit(1000).stream()))
+    except Exception:
+        bids_count = None
     print("✅ Firebase initialized successfully")
+    print(f"   tenders_count={tenders_count}, bids_count={bids_count}")
 except Exception as e:
     print(f"⚠️ Firebase initialization failed: {e}")
     db = None
     USE_FIREBASE = False
-    tenders_db: Dict[str, dict] = {}
-    bids_db: Dict[str, dict] = {}
 
-# Initialize Algorand with AlgoKit
+# Initialize Algorand with AlgoKit (make DEPLOYER_MNEMONIC optional)
 algod_client = algod.AlgodClient("", "https://testnet-api.algonode.cloud")
-deployer_mnemonic = os.getenv("DEPLOYER_MNEMONIC")
-deployer_private_key = mnemonic.to_private_key(deployer_mnemonic)
-deployer_account = Account(private_key=deployer_private_key)
-deployer_address = deployer_account.address
+deployer_mnemonic = os.getenv("DEPLOYER_MNEMONIC", "")
+deployer_private_key = None
+deployer_account = None
+deployer_address = None
+if deployer_mnemonic:
+    try:
+        deployer_private_key = mnemonic.to_private_key(deployer_mnemonic)
+        deployer_account = Account(private_key=deployer_private_key)
+        deployer_address = deployer_account.address
+    except Exception as e:
+        print(f"⚠️ Invalid DEPLOYER_MNEMONIC: {e}")
+
 APP_ID = int(os.getenv("ALGORAND_APP_ID", "755803777"))
 
 # Initialize Gemini AI
@@ -366,12 +403,19 @@ async def get_user_bids(user_id: str):
 
 @app.get("/api/health")
 async def health():
+    # Report health; if deployer_address isn't configured, indicate Algorand not connected
     try:
-        account_info = algod_client.account_info(deployer_address)
-        balance = account_info.get('amount', 0) / 1_000_000
+        if deployer_address:
+            account_info = algod_client.account_info(deployer_address)
+            balance = account_info.get('amount', 0) / 1_000_000
+            algorand_connected = True
+        else:
+            balance = 0
+            algorand_connected = False
+
         return {
             "status": "healthy",
-            "algorand_connected": True,
+            "algorand_connected": algorand_connected,
             "deployer_address": deployer_address,
             "balance_algo": balance,
             "app_id": APP_ID,
